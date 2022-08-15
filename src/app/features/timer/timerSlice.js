@@ -1,8 +1,12 @@
 import { createSlice } from "@reduxjs/toolkit";
 
+// episode can be "waiting", "Break" or "Focus"
 const initialState = {
+  durationTimer: 20,
+  durationBreak: 3,
   value: 5,
   status: "idle",
+  episode: "Waiting",
   pause: false,
 }
 
@@ -29,20 +33,30 @@ export const timerSlice = createSlice({
       state.pause = "true"
       state.status = "idle"
     },
+    focusTime: (state) => {
+      state.episode = "Focus"
+    },
     start: (state) => {
       state.pause = "false"
       state.status = "active"
     },
     // We will see what the best design will be for showing a break... 
     timeForBreak : (state) => {
-      state.value = "BREAK"
-      state.status = "idle"
+      state.value = state.durationBreak
+      state.episode = "Break"
     },
     reset: (state) => {
-      state.value = initialState.value; 
-      state.status = initialState.status;
-      state.pause = initialState.pause;
+      state.value = state.durationTimer;
+      state.episode = "Waiting"
+      state.status = "idle"
     },
+    setDurationTimer: (state, action) => {
+      state.durationTimer = action.payload.durationTimer 
+      state.value = action.payload.durationTimer 
+    },
+    setDurationBreak: (state, action) => {
+      state.durationBreak = action.payload.durationBreak
+    }
   },
   /*
   // The `extraReducers` field lets the slice handle actions defined elsewhere,
@@ -61,31 +75,43 @@ export const timerSlice = createSlice({
 
 });
 
-export const { decrement, reset, timeForBreak, pause, start } = timerSlice.actions; 
+export const { decrement, reset, timeForBreak, pause, start, setDurationBreak, setDurationTimer, focusTime } = timerSlice.actions; 
 
 // This selector allows to use a value of the state. Can also be defined inline but I did it now here
 export const selectTime = (state) => state.timer.value
 export const selectStatusTimer = (state) => state.timer.status
 export const selectStatusPause = (state) => state.timer.pause
+export const selectDurationTimer = (state) => state.timer.durationTimer
+export const selectDurationBreak = (state) => state.timer.durationBreak
+export const selectEpisode = (state) => state.timer.episode
+
+
 
 // THUNKS written by hand, here conditionally dispatching
 
 export const startTimer = () => (dispatch, getState) => {
   dispatch(start())
+  const initialEpisode = selectEpisode(getState());
+  if (initialEpisode === "Waiting") dispatch(focusTime())
   const startedTimer = setInterval(
     decrementIfStillTimeLeftAndNotPause, 1000)
 
   function decrementIfStillTimeLeftAndNotPause() {         
     const currentValue = selectTime(getState());
     const currentState = selectStatusTimer(getState());
+    const currentEpisode = selectEpisode(getState());
     console.log("NOW: ", currentValue, currentState)
     if(currentState === "active") {
       if (currentValue >= 1){
         dispatch(decrement());
         console.log("in dispatch")
-      }else {
+      }else if(currentEpisode === "Break") {
         console.log("Cleared Timer", startedTimer)
         clearInterval(startedTimer);
+        dispatch(reset());
+        console.log("Cleared Timer", startedTimer)
+      }else if(currentEpisode === "Focus"){
+        console.log("Cleared Timer", startedTimer)
         dispatch(timeForBreak());
         console.log("Cleared Timer", startedTimer)
       }      
