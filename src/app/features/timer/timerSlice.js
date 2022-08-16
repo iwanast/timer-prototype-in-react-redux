@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-// episode can be "waiting", "Break" or "Focus"
+// episode can be "Waiting", "Break" or "Focus"
 const initialState = {
   durationTimer: 20,
   durationBreak: 3,
@@ -10,17 +10,6 @@ const initialState = {
   pause: false,
 }
 
-/*
-THUNK function: (typically used for async requests)
-export const incrementAsync = createAsyncThunk(
-  "counter/fetchCount",
-  async (amount) => {
-    const response = await fetchCount(amount);
-    return response.data;
-  }
-);
-*/
-
 export const timerSlice = createSlice({
   name: "timer",
   initialState,
@@ -29,6 +18,10 @@ export const timerSlice = createSlice({
     decrement: (state) => {
         state.value -= 1;
     },
+    start: (state) => {
+      state.pause = "false"
+      state.status = "active"
+    },
     pause: (state) => {
       state.pause = "true"
       state.status = "idle"
@@ -36,10 +29,7 @@ export const timerSlice = createSlice({
     focusTime: (state) => {
       state.episode = "Focus"
     },
-    start: (state) => {
-      state.pause = "false"
-      state.status = "active"
-    },
+   
     // We will see what the best design will be for showing a break... 
     timeForBreak : (state) => {
       state.value = state.durationBreak
@@ -72,12 +62,22 @@ export const timerSlice = createSlice({
         })
   },
 */
-
 });
 
-export const { decrement, reset, timeForBreak, pause, start, setDurationBreak, setDurationTimer, focusTime } = timerSlice.actions; 
+export const { decrement, pause, start, reset, focusTime, timeForBreak, setDurationBreak, setDurationTimer } = timerSlice.actions; 
 
-// This selector allows to use a value of the state. Can also be defined inline but I did it now here
+/*
+THUNK function: (typically used for async requests)
+export const incrementAsync = createAsyncThunk(
+  "counter/fetchCount",
+  async (amount) => {
+    const response = await fetchCount(amount);
+    return response.data;
+  }
+);
+*/
+
+// This selector allows to use a value of the state in a Hook in React. Can also be defined inline but I did it now here
 export const selectTime = (state) => state.timer.value
 export const selectStatusTimer = (state) => state.timer.status
 export const selectStatusPause = (state) => state.timer.pause
@@ -85,44 +85,32 @@ export const selectDurationTimer = (state) => state.timer.durationTimer
 export const selectDurationBreak = (state) => state.timer.durationBreak
 export const selectEpisode = (state) => state.timer.episode
 
-
-
 // THUNKS written by hand, here conditionally dispatching
-
 export const startTimer = () => (dispatch, getState) => {
   dispatch(start())
   const initialEpisode = selectEpisode(getState());
   if (initialEpisode === "Waiting") dispatch(focusTime())
-  const startedTimer = setInterval(
-    decrementIfStillTimeLeftAndNotPause, 1000)
+  const startedTimer = setInterval(decrementIfStillTimeLeftAndNotPause, 1000);
 
   function decrementIfStillTimeLeftAndNotPause() {         
     const currentValue = selectTime(getState());
     const currentState = selectStatusTimer(getState());
     const currentEpisode = selectEpisode(getState());
-    console.log("NOW: ", currentValue, currentState)
     if(currentState === "active") {
       if (currentValue >= 1){
         dispatch(decrement());
-        console.log("in dispatch")
       }else if(currentEpisode === "Break") {
-        console.log("Cleared Timer", startedTimer)
         clearInterval(startedTimer);
         dispatch(reset());
-        console.log("Cleared Timer", startedTimer)
       }else if(currentEpisode === "Focus"){
-        console.log("Cleared Timer", startedTimer)
         dispatch(timeForBreak());
-        console.log("Cleared Timer", startedTimer)
       }      
     }else if(currentState === "idle"){
-      console.log("IN IDLE:", currentState)
       clearInterval(startedTimer)
     } else{
-      console.log("CASE IN ELSE STATemeNT")
+      console.log("Case not defined")
     }
   };
-
 }
 
 export default timerSlice.reducer;
