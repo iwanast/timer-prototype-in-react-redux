@@ -69,15 +69,13 @@ export const incrementAsync = createAsyncThunk(
 export const selectTimerValue = (state) => state.timer.value
 export const selectStatusTimer = (state) => state.timer.status
 export const selectStatusPause = (state) => state.timer.pause
-// export const selectDurationTimer = (state) => state.timer.durationTimer
-// export const selectDurationBreak = (state) => state.timer.durationBreak
-export const selectEpisode = (state) => state.timer.episode
+export const selectTimerEpisode = (state) => state.timer.episode
 
 // THUNKS written by hand, here conditionally dispatching
 export const startTimer = () => (dispatch, getState) => {
   dispatch(start())
   const durationTimer = selectDurationTimer(getState())
-  const initialEpisode = selectEpisode(getState());
+  const initialEpisode = selectTimerEpisode(getState());
   if (initialEpisode === "Waiting"){
     dispatch(setEpisode({episode: "Focus"}))
     dispatch(changeValue({value: durationTimer}))
@@ -87,7 +85,7 @@ export const startTimer = () => (dispatch, getState) => {
   function decrementIfStillTimeLeftAndNotPause() {         
     const currentValue = selectTimerValue(getState());
     const currentState = selectStatusTimer(getState());
-    const currentEpisode = selectEpisode(getState());
+    const currentEpisode = selectTimerEpisode(getState());
     const durationBreak = selectDurationBreak(getState())
     if(currentState === "active") {
       if (currentValue >= 1){
@@ -95,7 +93,6 @@ export const startTimer = () => (dispatch, getState) => {
       }else if(currentEpisode === "Break") {
         clearInterval(startedTimer);
         dispatch(reset());
-        dispatch(changeValue({value: durationTimer}))
       }else if(currentEpisode === "Focus"){
         dispatch(setEpisode({episode: "Break"}));
         dispatch(changeValue({value: durationBreak}))
