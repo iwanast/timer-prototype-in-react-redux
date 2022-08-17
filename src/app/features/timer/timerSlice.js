@@ -1,10 +1,9 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { selectDurationBreak, selectDurationTimer } from "../settings/settingsSlice";
 
 // episode can be "Waiting", "Break" or "Focus"
 const initialState = {
-  durationTimer: 20,
-  durationBreak: 3,
-  value: 5,
+  value: 0,
   status: "idle",
   episode: "Waiting",
   pause: false,
@@ -26,27 +25,16 @@ export const timerSlice = createSlice({
       state.pause = "true"
       state.status = "idle"
     },
-    focusTime: (state) => {
-      state.episode = "Focus"
+    setEpisode: (state, action) => {
+      if(action.payload.episode === "Waiting" || action.payload.episode === "Break" || action.payload.episode === "Focus")
+      state.episode = action.payload.episode
     },
-   
-    // We will see what the best design will be for showing a break... 
-    timeForBreak : (state) => {
-      state.value = state.durationBreak
-      state.episode = "Break"
+    changeValue: (state, action) => {
+      state.value = action.payload.value
     },
-    reset: (state) => {
-      state.value = state.durationTimer;
-      state.episode = "Waiting"
-      state.status = "idle"
+    reset: () => {
+      return initialState;
     },
-    setDurationTimer: (state, action) => {
-      state.durationTimer = action.payload.durationTimer 
-      state.value = action.payload.durationTimer 
-    },
-    setDurationBreak: (state, action) => {
-      state.durationBreak = action.payload.durationBreak
-    }
   },
   /*
   // The `extraReducers` field lets the slice handle actions defined elsewhere,
@@ -64,7 +52,7 @@ export const timerSlice = createSlice({
 */
 });
 
-export const { decrement, pause, start, reset, focusTime, timeForBreak, setDurationBreak, setDurationTimer } = timerSlice.actions; 
+export const { decrement, pause, start, reset, setEpisode, changeValue } = timerSlice.actions; 
 
 /*
 THUNK function: (typically used for async requests)
@@ -78,32 +66,39 @@ export const incrementAsync = createAsyncThunk(
 */
 
 // This selector allows to use a value of the state in a Hook in React. Can also be defined inline but I did it now here
-export const selectTime = (state) => state.timer.value
+export const selectTimerValue = (state) => state.timer.value
 export const selectStatusTimer = (state) => state.timer.status
 export const selectStatusPause = (state) => state.timer.pause
-export const selectDurationTimer = (state) => state.timer.durationTimer
-export const selectDurationBreak = (state) => state.timer.durationBreak
+// export const selectDurationTimer = (state) => state.timer.durationTimer
+// export const selectDurationBreak = (state) => state.timer.durationBreak
 export const selectEpisode = (state) => state.timer.episode
 
 // THUNKS written by hand, here conditionally dispatching
 export const startTimer = () => (dispatch, getState) => {
   dispatch(start())
+  const durationTimer = selectDurationTimer(getState())
   const initialEpisode = selectEpisode(getState());
-  if (initialEpisode === "Waiting") dispatch(focusTime())
+  if (initialEpisode === "Waiting"){
+    dispatch(setEpisode({episode: "Focus"}))
+    dispatch(changeValue({value: durationTimer}))
+  } 
   const startedTimer = setInterval(decrementIfStillTimeLeftAndNotPause, 1000);
 
   function decrementIfStillTimeLeftAndNotPause() {         
-    const currentValue = selectTime(getState());
+    const currentValue = selectTimerValue(getState());
     const currentState = selectStatusTimer(getState());
     const currentEpisode = selectEpisode(getState());
+    const durationBreak = selectDurationBreak(getState())
     if(currentState === "active") {
       if (currentValue >= 1){
         dispatch(decrement());
       }else if(currentEpisode === "Break") {
         clearInterval(startedTimer);
         dispatch(reset());
+        dispatch(changeValue({value: durationTimer}))
       }else if(currentEpisode === "Focus"){
-        dispatch(timeForBreak());
+        dispatch(setEpisode({episode: "Break"}));
+        dispatch(changeValue({value: durationBreak}))
       }      
     }else if(currentState === "idle"){
       clearInterval(startedTimer)
